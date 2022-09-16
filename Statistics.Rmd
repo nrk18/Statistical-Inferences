@@ -1,0 +1,396 @@
+---
+title: 'Exam Template: Statistical Inference'
+author: "21058953"
+date: 'Jan 2022: Sep21 run'
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+# do not change these options
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(error = TRUE,comment=NA) # do not edit this line.
+```
+
+# Instructions to students
+
+You should only use the file Exam_template.Rmd provided on blackboard and you should load this file from your scripts folder / directory.
+
+Save this template as your studentID.Rmd; you will upload this file as your submission. Change the information on line 3 of this file – changing the author information to your **student ID**. Do not change the authorship to your name.
+
+Ensure that you save your data into your data folder (as discussed in class). You may use the files mypackages.R and helperFunctions.R from blackboard. If you use these files, do not alter them. If you wish to create additional files for custom functions that you have prepared in advance, make sure that you upload these in addition to your .Rmd file and your compiled output file.
+
+Your should knit this file to a document **Word** format.
+
+Any changes that you make to the data (e.g. variable name changes) should be made entirely within R.
+
+The subsubsections labelled **Answer:** indicate where you should put in your written Answers. The template also provides blank code chunks for you to complete your Answers; you may choose to add additional chunks if required.
+
+```{r libraries, include=FALSE}
+# load required libraries / additional files
+source("helperFunctions.R")
+source("mypackages.R")
+
+```
+
+```{r data}
+# load dataset
+data<-read.csv("../data/Jan_2022_Exam_Data.csv")
+```
+
+# Data description
+
+
+This dataset is part of a larger dataset that has been collected to help to estimate the price of used cars.
+
+It contains the following variables:
+
+- brand (manufacturer)
+- model (of car)
+- year (of registration of the car)
+- price (in GB pounds)
+- transmission (type of gearbox)
+- mileage (total distance covered by the car)
+- fuelType (type of fuel used by the car)
+- tax (annual cost of vehicle tax)
+- mpg (miles per gallon - a measure of fuel efficiency)
+- engineSize (size of the engine in litres)
+
+
+
+# Question 1: Data Preparation (11 marks)
+
+You are interested in modelling the price of vehicles that have all of the following properties:
+
+- mileage less than 60000
+- Manual transmission
+- Petrol engine (fuelType)
+- Costing less than £200 in annual Vehicle Tax.
+
+Once you have selected the rows of data with these properties, then you must *use your studentID* to select a random sample of 2000 rows of the data to perform the rest of your analysis with.
+
+You should remove any redundant variables (where only one value remains in that variable).
+
+This subset of the data is what you should use for the rest of this assessment. 
+
+
+a. Explain what data preparation is required in order for the data in Jan_2022_Exam_Data.csv to be suitable for this analysis.
+
+**(4 marks)**
+
+### Answer: The structure of the dataset is understood after loading the dataset into R. The structure gives the datatypes of various variables. For analysis, the columns are filtered based on the conditions given: 'mileage' values less than 60000, 'transmsission' only with manual transmission, 'fuelType' having petrol and 'tax' values less than 200 pounds. By using 'set.seed' function, random samples are generated from the dataset. By setting seed the sample generated will always be the same. To avoid the redundancy, the sample is taken by not replacing the values taken, by using 'replace = FALSE' in the sample function.
+
+
+
+b. Implement the required data preparation in the code chunk below:
+
+**(7 marks)**
+
+### Answer:
+
+```{r dataprep}
+str(data)                                                     #The structure of data is understood for applying filters.
+new_data<- data %>%
+  filter(mileage<60000, transmission=='Manual', fuelType=='Petrol', tax<200) #The data is filtered with the conditions for mileage, transmission, fuelType and tax specified in the question
+new_data<-new_data[apply(new_data["engineSize"]!=0,1,all),]   #Deleting rows for values equal to zero inengineSize Column
+glimpse(new_data)                               #Checking if the new data has been filtered.
+
+set.seed(21058953)                              #Setting seed for reproducibility.
+#index<-sample(1:nrow(new_data), 2000, replace = FALSE)
+my_data <- new_data[sample(1:nrow(new_data), 2000, replace = FALSE), ]       # Random Sample of data taken from the dataset without replacements, 
+my_data <- distinct(my_data)                        #to avoid redundancy.
+str(my_data)                                     # Taking first six rows of the sample
+
+```
+
+# Question 2: Exploratory Data Analysis (22 marks)
+
+## Descriptive Statistics
+
+a.	What descriptive statistics would be appropriate for this dataset?  Explain why these are useful in this context.
+
+**(2 marks)**
+
+### Answer: Taking summary of the sample would have been appropriate in this dataset. This will give the idea of the spread of data and where it is centered. However, the question here requires estimating the price of car; having manual transmission and Petrol engine. So, finding the values on these criteria will give us the idea of how dependent these variables are on prices. This will be achieved when boxplot is used to relate mileage and tax with price. 
+
+
+
+b. Produce those descriptive statistics in the code chunk below:
+
+**(4 marks)**
+
+### Answer:
+
+```{r DescriptiveStats}
+summary(my_data) #Finding the summary of the sample taken from the dataset
+
+#Summarising the mean values by year to understand the central tendency
+my_data %>%
+  group_by(year) %>%
+  summarise(Mean_price = mean(price), Mean_mileage= mean(mileage), Mean_tax= mean(tax), Mean_mpg=mean(mpg), Mean_EngineSize= mean(engineSize))
+
+#Summarising the mean values by brand to understand the central tendency
+my_data %>%
+  group_by(model, brand) %>%
+  summarise(Mean_price = mean(price), Mean_mileage= mean(mileage), Mean_tax= mean(tax), Mean_mpg=mean(mpg), Mean_EngineSize= mean(engineSize))
+
+```
+
+c. What have those descriptive statistics told you – and how does this inform the analysis that you would undertake on this data or any additional data cleaning requirements?
+
+**(4 marks)**
+
+### Answer: The descriptive statistics have been summarised for year as well as brand and model. The summary statistics provides the values of central tendency of the variables. From the statistics we infer that the BMW 4 series has less share of representation since the mean mileage is 110. It may also be because the car is new and haven't driven much. The price of Ford B-MAX is very less and close to 8.5k pounds. When we consider the values with year, the representation of cars of 2009 make had a very low sample representation, since the mean mileage of this varies greatly from those of other years. 
+
+
+
+## Exploratory Graphs
+
+d. What exploratory graphs would be appropriate for this dataset? Explain why these are useful in this context.
+
+**(2 marks)**
+
+### Answer: To explain the dataset using graphs is the most convenient and effective way to communicate the findings. For analysis purpose, here boxplot and scatterplots were used. The relation between price and various variables like brand, year and mileage was found out.
+
+
+
+e. Now produce those exploratory graphs in the code chunk below:
+
+**(4 marks)**
+
+### Answer:
+
+```{r ExploratoryGraphs}
+#plotting graph between brand and price
+ggplot(my_data, aes(brand,price)) +
+  geom_boxplot() +
+  labs(title = "Brand value of Cars") +
+  xlab("Brand of Car") +
+  ylab("Price of Car")
+
+#plotting graph between year and price
+ggplot(my_data, aes(year,price)) +
+  geom_point() +
+  labs(title = "Brand value of Cars per Year") +
+  xlab("Year of Make") +
+  ylab("Price of Car")
+
+#plotting graph between price and mileage
+ggplot(my_data, aes(price, mileage)) +
+  geom_point() +
+  labs(title = "Brand value of Cars per Miles driven") +
+  xlab("Price of Car") +
+  ylab("Miles driven")
+```
+
+f. Interpret these exploratory graphs.  How do these graphs inform your subsequent analysis?
+
+**(4 marks)**
+
+### Answer: The graph showed that the price of cars as per brand is more for Mercedes and less for Ford. The Audi and BMW brands showed more or less equal variation. When the graph is plotted by year, it is observed that the value of car increases by year. While the price is considered for miles driven, the price was fairly less for cars with less miles driven. Only few cars showed higher prices and those were cars whose mileage were less than 20000. 
+
+
+
+## Correlations
+
+g. What linear correlations are present within this data?
+
+**(2 marks)**
+
+### Answer: When plotting correlation values, the relation between 'engineSize' and 'mpg' is strongest. But we cannot draw any conclusion without taking price into account. The strongest relation 'price' has is with 'mpg'. Linear correlations coefficients were found for variables: 'mileage', 'tax' and 'mpg'(Miles per gallon) with the price value in the dataset. Of these, the mileage and miles per gallon showed a negative correlation with the price; and tax showed a positive correlation. But since the values were not closer to one, we cannot interpret that the correlation was linearly significant in all the cases. However, among the three variables, mpg was more linearly related with the price of the used cars. The correlation test shows the p- value less than 0.05. This shows that there is a significant association between the variables.     
+
+
+```{r linearcor}
+#Finding the linear correlation of mileage, tax and mpg with the price of used cars. For running models we are avoiding the columns that are not continuous. That are year, brand, transmission and fuelType.  
+df <- my_data %>%
+  dplyr::select(-c(year,brand,model,transmission,fuelType))
+m<-cor(df)
+corrplot(m)
+
+cor(df$price,df$mileage)
+cor(df$price,df$tax)
+cor(df$price,df$mpg)
+cor.test(df$price,df$mpg)
+
+```
+
+# Question 3: Bivariate relationship (14 marks)
+
+a. Which of the potential explanatory variables has the strongest linear relationship with the dependent variable?
+
+**(1 mark)**
+
+### Answer: Of all the variables in the dataset, the variable 'mpg'(miles per galon) has the strongest linear relationship with the dependent variable, price. Since it showed a comparatively larger coefficient value in linear correlation.
+
+
+
+b. Create a linear model to model this relationship.
+
+**(2 marks)**
+
+### Answer: The final linear model was having Price as the dependent variable with miles per gallon(mpg) as independent variable.
+
+
+```{r model1}
+#Creating a model with logarithmic of price as dependent variable and miles per gallon as independent variable.
+model1<-lm(log10(price)~mpg,data=df)
+
+#taking summary of model
+summary(model1)               
+
+```
+
+c. Explain and interpret the model:
+
+**(3 marks)**
+
+### Answer:  Our regression equation is: 
+$$Log_{10}(Price) = 4.6518002 - 0.0102186 \times MPG$$
+### The linear model was created between 'price' and 'mpg'. The 'price' is the dependent variable and 'mpg' is the independent variable. The p-value for the model was less than 0.05, with residual error being 0.136 on 1991 degrees of freedom.
+### The model suggests that the log of price of used cars were linearly related with miles per gallon. Miles per gallon('mpg') showed negative coefficients which means the price of car reduces logarithmically with increase in miles per gallon.     
+
+
+d. Comment on the performance of this model, including comments on overall model fit and the validity of model assumptions. Include any additional code required for you to make these comments in the code chunk below.
+
+**(4 marks)**
+
+### Answer: The assumptions that the model is normally distributed, the dependent variable is a linear function of independent variable and observations varies along regression line was checked with check_model and performance functions.Linearity plot in the check_model function suggests that the predicted values were mostly fitted along the center and the linearity assumption is met.The variance homogeneity is also satisfying the condition were reference line is more or less flat and horizontal. The influential observations were inside the contour lines. The normality of residuals were falling within the line and normal distribution was close to the assumption.  The lower degree of AIC value indicate that the sample is a good representation of the dataset. The overall model fit is good.
+
+
+```{r model1performance}
+#Model performance is evaluated
+check_model(model1)
+performance(model1)
+
+```
+
+## Bootstrap
+
+e. Use bootstrapping on this model to obtain a 95% confidence interval of the estimate of the slope parameter.
+
+**(4 marks)**
+
+### Answer: The slope parameter in the model was miles per gallon(mpg). In order to do bootstrapping for the slope parameter, the number of iterations considered was 1500. For each iterations the sample was taken from the sample obtained from the dataset. The mean value of all the means of the variable 'mpg' was taken and plotted on a graph. The 95% confidence interval of the estimate of the slope parameter was found.
+
+
+```{r bootstrap}
+n<-nrow(df)
+repeats<-1500 # bootstraping for 1500 repeated values.
+bootstrap_means<-rep(NA, times = repeats) 
+for(i in seq_len(repeats)){ # a loop from 1 to repeats
+  x_temp<-sample(df$mpg, n ,replace=TRUE) # sampling the values with  with replacement
+  bootstrap_means[i]<-mean(x_temp) 
+}
+B.means<-data.frame(b_means=bootstrap_means)
+B.means<-data.frame(b_means=bootstrap_means)
+#creating a histogram of bootstraps samples
+ggplot(B.means, aes(x = b_means)) + 
+  geom_histogram(aes(y = ..density..),binwidth = .1)+
+  ggtitle("Means of Miles per Gallon")+
+  theme_bw()
+quantile(bootstrap_means,c(.025,0.975))
+```
+
+
+
+# Question 4: Multivariable relationship (10 marks)
+
+Create a model with all of the appropriate remaining explanatory variables included:
+
+```{r model2}
+#Developing model for remaining variables
+model2<- lm(price~.,data=df)
+summary(model2)        #Taking summary of model2
+```
+
+a. Explain and interpret the model:
+
+**(4 marks)**
+
+### Answer: The model was taken with price as the dependent variable; and mileage, tax, miles per gallon and engine size as independent variables. The summary of the model had a very small intercept value of 2.073e+04. That means the independent variables were more likely to cause a linear influence on the price of used cars. The model summary gives the glimpse that the mileage and miles per gallon have negative coefficient, that means the price of used cars decrease as the mileage and miles per gallon increases. But, the relation is positive in the case of tax and engine size. The adjusted R square value is 0.55, which means the prediction was fairly accurate.The variation is 55% from the actual value.
+
+
+
+b. Comment on the performance of this model, including comments on overall model fit and the validity of model assumptions. Include any additional code required for you to make these comments in the code chunk below.
+
+**(4 marks)**
+
+### Answer: The indications from the graphs shows that the model is best fitted for linearity. Considering the homogeneity of variance, the reference line is flat and horizontal and collinearity is less than 5. This indicates that the variance and collinearity is well established for this model. The influential observations lie within the contour and the residuals fall along the line for the graph plotted for the normality of residuals. Regarding the normal distribution of residuals, the distribution closely follows normal distribution. 
+### When the performance of model2 is taken, then the AIC values are large. That means the sample is not a good representation of data. So we need to model the data with step-wise model selection to find the model with the smallest AIC.
+
+
+```{r model2performance}
+#for checking the performance of model2
+check_model(model2)
+performance(model2)
+
+```
+```{r}
+#extracting AIC to find best fit model
+full_model<-lm(price~., data=df)
+model_final<-stepAIC(full_model)  #
+summary(model_final)
+```
+c. What general concerns do you have regarding this model?
+
+**(2 marks)**
+
+### Answer: The model has not taken year as a variable. It is a common notion that the price of used cars diminishes by year. So, the assumption was the mileage of cars does not affect the price as the year of make. The variable also follows a discrete value and hence the analysis will be difficult.
+
+
+# Question 5: Model simplification (8 marks)
+
+
+a.	What approaches for model simplification would you consider implementing and why?
+
+**(4 marks)**
+
+### Answer: Model simplification is essential for creating useful models. The main objective of model simplification is to focus on improving the feasibility by reducing study efforts and including system elements. Model simplification is a field that is still under development even though it is accepted throughout the world. The whole process involved in the model simplification are: removal of non-linear or quadratic interaction terms, non-significant explanatory variables; combining levels of factor and non-different explanatory variables; and setting non-significant slopes to zero. This is done to improve readability, ease of implementing models and make it more efficient.
+
+
+
+b.	What are the potential advantages of simplifying a model?
+
+**(2 marks)**
+
+### Answer: The benefits of model simplification are: it optimises cost, make it more productive and ensures user satisfaction. Model simplification achieves this by breaking barriers of an application, that can negatively cause problems with users and their tasks. The greatest advantage is that model becomes more effective, efficient and simple.
+
+
+
+c.	 What are the potential disadvantages of simplifying a model?
+
+**(2 marks)**
+
+### Answer: Simplifying a model involves many assumptions for simplifications. The model becomes more complex if too many assumptions are considered for simplifying the model. The process also requires so many iterations to end up being too simple, which takes processing time much more than normal models. 
+
+
+# Question 6: Reporting (35 marks)
+
+A client is looking to purchase a used Skoda Superb (registration year either 2018 or 2019, manual transmission, petrol engine) and wants to understand what factors influence the expected price of a used car, (and how they influence the price). 
+
+Write a short report of 300-500 words for the client. 
+
+Furthermore, include an explanation as to which model you would recommend, and why you have selected that model. 
+
+Comment on any suggestions for alterations to the model that would be appropriate to consider. 
+
+Highlight what may or may not be directly transferable from the scenario analysed in Questions 1 to 5. 
+
+
+### Answer: The dataset analysed was for brands: Mercedes, Audi, BMW and Ford. The findings pointed out that the year of make is a major factor influencing the price of the car. In addition to that the brand value also added to the price of car. This deduction was made over the statistics and variation of variables using actual values. When the model was predicted using the data received from the sample, it was found that the price of a car increases with the tax value and it decreases with the mileage and the miles per gallon values. Since the car, Skoda Superb was not in the dataset, it is hard to make any certain conclusion. Without knowing the brand value, it is hard to arrive at a conclusion. However, if we could relate Skoda Superb with any vehicle in the dataset, the conclusion can be made.
+### In addition to that, according to my knowledge, I would recommend a car similar in characteristics as a Skoda Superb. There are two options. One is Audi A4 and the other is BMW 3 series. Of these two, I would prefer recommending, BMW 3 Series. The characteristics of BMW 3 Series suggests that the vehicle is less driven as compared to Audi A4. It was found in modelling the variables, that the price will decrease with the miles per gallon, and the BMW 3 Series was having comparatively lesser price and lesser mileage. 
+### As mentioned above, the second option to BMW 3 Series will be Audi A4. Even though the price of the A4 is slightly higher than the BMW 3 Series, that was exact reflection of the model developed. The mileage of Audi A4 was very low compared to BMW 3 Series and hence the price. The brand value of the two cars were the same. So, when considering the similarities with mileage and mpg, both cars will be available at the same price. Which will be a perfect alternative for the Skoda Superb.
+### The scenario analysed in Questions 1 to 5 directly relates to the price of the used cars. The mileage and Miles driven has a inverse relation with the price of the car. That is, as the mileage or miles per gallon increases the value of car irrespective of brand, decreases. Eventhough that is the case, the year of make and the brand value of the car has a significant influence over its price. However, here the past history of the cars were not analysed, like accidents, repairs or ownership history. These factors could also influence the price of used cars.
+
+
+
+
+
+# Session Information
+
+Do not edit this part. Make sure that you compile your document so that the information about your session (including software / package versions) is included in your submission.
+
+```{r}
+sessionInfo()
+```
